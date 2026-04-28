@@ -215,31 +215,28 @@
       <input type="hidden" id="v-visit-type">
     </div>
     <div class="form-section">
-      <h3>Treatment Notes</h3>
-      <div class="field"><label>Skilled services provided</label><textarea id="v-services" rows="3" placeholder="Describe the skilled services provided this visit…"></textarea></div>
-      <div class="field"><label>Patient response / progress</label><textarea id="v-progress" rows="3" placeholder="Patient's response to treatment and progress toward goals…"></textarea></div>
-      <div class="field"><label>Plan / next steps</label><textarea id="v-plan" rows="2" placeholder="Plan for next visit…"></textarea></div>
-    </div>
-    <div class="form-section">
-      <h3>Therapist Signature</h3>
-      <div class="sig-pad-wrapper">
-        <canvas id="sigTherapist" width="440" height="160"></canvas>
-        <div class="sig-placeholder" id="sigTherapistPlaceholder">Sign here</div>
+      <h3>Signatures</h3>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Therapist Signature</div>
+        <div class="sig-pad-wrapper">
+          <canvas id="sigTherapist" width="440" height="160"></canvas>
+          <div class="sig-placeholder" id="sigTherapistPlaceholder">Sign here</div>
+        </div>
+        <div class="sig-actions">
+          <button class="sig-clear-btn" onclick="clearSig('sigTherapist','sigTherapistPlaceholder')">Clear</button>
+          <span class="sig-label">Therapist Signature</span>
+        </div>
       </div>
-      <div class="sig-actions">
-        <button class="sig-clear-btn" onclick="clearSig('sigTherapist','sigTherapistPlaceholder')">Clear</button>
-        <span class="sig-label">Therapist signature</span>
-      </div>
-    </div>
-    <div class="form-section">
-      <h3>Patient / Caregiver Signature</h3>
-      <div class="sig-pad-wrapper">
-        <canvas id="sigPatient" width="440" height="160"></canvas>
-        <div class="sig-placeholder" id="sigPatientPlaceholder">Patient signs here</div>
-      </div>
-      <div class="sig-actions">
-        <button class="sig-clear-btn" onclick="clearSig('sigPatient','sigPatientPlaceholder')">Clear</button>
-        <span class="sig-label">Patient or caregiver signature</span>
+      <div>
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Patient Signature</div>
+        <div class="sig-pad-wrapper">
+          <canvas id="sigPatient" width="440" height="160"></canvas>
+          <div class="sig-placeholder" id="sigPatientPlaceholder">Patient signs here</div>
+        </div>
+        <div class="sig-actions">
+          <button class="sig-clear-btn" onclick="clearSig('sigPatient','sigPatientPlaceholder')">Clear</button>
+          <span class="sig-label">Patient Signature</span>
+        </div>
       </div>
     </div>
   </div>
@@ -436,7 +433,7 @@ function initVisitForm() {
   populateAgencies('v-agency');
   document.querySelectorAll('#visitTypeChips .chip').forEach(c => c.classList.remove('selected'));
   document.getElementById('v-visit-type').value = '';
-  ['v-patient','v-services','v-progress','v-plan'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['v-patient'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   initSigPad('sigTherapist','sigTherapistPlaceholder', sig => { therapistSig = sig; });
   initSigPad('sigPatient','sigPatientPlaceholder', sig => { patientSig = sig; });
   clearSig('sigTherapist','sigTherapistPlaceholder');
@@ -511,19 +508,15 @@ function submitVisit() {
   const patient = document.getElementById('v-patient').value.trim();
   const agency = document.getElementById('v-agency').value;
   const visitType = document.getElementById('v-visit-type').value;
-  const services = document.getElementById('v-services').value.trim();
   if (!patient) { showToast('Please enter the patient name.','error'); return; }
   if (!agency) { showToast('Please select an agency.','error'); return; }
   if (!visitType) { showToast('Please select a visit type.','error'); return; }
-  if (!services) { showToast('Please enter the services provided.','error'); return; }
   if (!therapistSig) { showToast('Please add your signature.','error'); return; }
   if (!patientSig) { showToast('Please get the patient signature.','error'); return; }
   const data = {
     type:'visit', date:document.getElementById('v-date').value, time:document.getElementById('v-time').value,
     therapistName:currentTherapist.name, therapistEmail:currentTherapist.email,
-    agency, patientName:patient,
-    visitType, services, progress:document.getElementById('v-progress').value.trim(),
-    plan:document.getElementById('v-plan').value.trim(),
+    agency, patientName:patient, visitType,
     therapistSignature:therapistSig, patientSignature:patientSig,
   };
   submitData(data);
