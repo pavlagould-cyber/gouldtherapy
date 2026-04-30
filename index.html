@@ -1,29 +1,669 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Gould Therapy">
 <title>Gould Therapy</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; }
-  iframe {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
+  /* Hide the Google Apps Script banner */
+  .script-application-banner { display: none !important; }
+  body > .banner { display: none !important; }
+
+  /* Force full screen inside Apps Script iframe */
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+</style>
+<script>
+  // Force the parent iframe to be full screen
+  if (window.parent !== window) {
+    try {
+      window.parent.document.querySelectorAll('iframe').forEach(function(f) {
+        f.style.width = '100%';
+        f.style.height = '100vh';
+        f.style.border = 'none';
+        f.style.position = 'fixed';
+        f.style.top = '0';
+        f.style.left = '0';
+        f.style.zIndex = '9999';
+      });
+    } catch(e) {}
+  }
+</script>
+<style>
+  :root {
+    --navy: #1a4a7a; --navy-dark: #123358; --navy-light: #2a6aaa;
+    --teal: #2a9d8f; --teal-light: #3abfb0; --gold: #e9c46a;
+    --white: #ffffff; --gray-50: #f8fafc; --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0; --gray-400: #94a3b8; --gray-600: #475569;
+    --gray-800: #1e293b; --danger: #e63946; --success: #2a9d8f;
+    --radius: 12px; --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(26,74,122,0.10);
+    --shadow-sm: 0 2px 8px rgba(26,74,122,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Georgia', serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; max-width: 100%; margin: 0 auto; }
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+  .app-header { background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, var(--navy-light) 100%); color: white; padding: 20px 20px 24px; text-align: center; position: relative; }
+  .app-header .back-btn { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15); border: none; color: white; padding: 8px 14px; border-radius: 20px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .logo-circle { width: 72px; height: 72px; background: white; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.2); overflow: hidden; }
+  .logo-circle svg { width: 52px; height: 52px; }
+  .app-header h1 { font-size: 22px; font-weight: normal; letter-spacing: 0.5px; }
+  .app-header .subtitle { font-size: 13px; opacity: 0.75; margin-top: 2px; font-style: italic; }
+  .home-buttons { padding: 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .main-btn { display: flex; align-items: center; gap: 16px; background: white; border: none; border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow-sm); cursor: pointer; text-align: left; width: 100%; font-family: inherit; transition: transform 0.15s, box-shadow 0.15s; border-left: 5px solid var(--navy); }
+  .main-btn:active { transform: scale(0.98); }
+  .main-btn.teal { border-left-color: var(--teal); }
+  .main-btn.gold { border-left-color: var(--gold); }
+  .main-btn .btn-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+  .main-btn .btn-icon.navy { background: #e8f0f8; }
+  .main-btn .btn-icon.teal { background: #e0f5f3; }
+  .main-btn .btn-icon.gold { background: #fdf6e3; }
+  .main-btn .btn-text h3 { font-size: 16px; color: var(--gray-800); font-weight: normal; }
+  .main-btn .btn-text p { font-size: 12px; color: var(--gray-600); margin-top: 2px; font-style: italic; }
+  .form-body { padding: 20px; flex: 1; overflow-y: auto; }
+  .form-section { background: white; border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px; margin-bottom: 16px; }
+  .form-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--navy); margin-bottom: 14px; font-weight: normal; border-bottom: 1px solid var(--gray-100); padding-bottom: 8px; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; color: var(--gray-600); margin-bottom: 5px; font-style: italic; }
+  .field input, .field select, .field textarea { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; color: var(--gray-800); background: var(--gray-50); transition: border-color 0.2s; -webkit-appearance: none; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--navy); background: white; }
+  .field textarea { resize: none; line-height: 1.5; }
+  .field input[readonly] { background: var(--gray-100); color: var(--gray-600); }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sig-pad-wrapper { border: 2px dashed var(--gray-200); border-radius: var(--radius-sm); background: white; position: relative; overflow: hidden; }
+  .sig-pad-wrapper canvas { display: block; width: 100%; height: 160px; touch-action: none; cursor: crosshair; }
+  .sig-placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: var(--gray-400); font-size: 13px; font-style: italic; pointer-events: none; text-align: center; }
+  .sig-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .sig-clear-btn { font-size: 12px; color: var(--danger); background: none; border: 1px solid var(--danger); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-family: inherit; }
+  .sig-label { font-size: 12px; color: var(--gray-600); font-style: italic; }
+  .submit-area { padding: 20px; padding-top: 4px; }
+  .submit-btn { width: 100%; background: linear-gradient(135deg, var(--navy-dark), var(--navy-light)); color: white; border: none; border-radius: var(--radius); padding: 18px; font-size: 16px; font-family: inherit; cursor: pointer; box-shadow: 0 4px 16px rgba(26,74,122,0.3); transition: transform 0.15s; letter-spacing: 0.3px; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn.teal { background: linear-gradient(135deg, #1a7a6f, var(--teal-light)); box-shadow: 0 4px 16px rgba(42,157,143,0.3); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 8px 14px; border: 1.5px solid var(--gray-200); border-radius: 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; font-family: inherit; background: white; transition: all 0.15s; }
+  .chip.selected { border-color: var(--navy); background: var(--navy); color: white; }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--gray-800); color: white; padding: 14px 24px; border-radius: 24px; font-size: 14px; z-index: 1000; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--teal); }
+  .toast.error { background: var(--danger); }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); align-items: center; justify-content: center; z-index: 999; display: none; flex-direction: column; }
+  .loading-overlay.show { display: flex; }
+  .spinner { width: 44px; height: 44px; border: 3px solid var(--gray-200); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
+  .loading-overlay p { color: var(--gray-600); font-size: 14px; font-style: italic; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .admin-tabs { display: flex; background: var(--gray-100); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 16px; }
+  .admin-tab { flex: 1; padding: 9px; border: none; background: none; border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--gray-600); cursor: pointer; }
+  .admin-tab.active { background: white; color: var(--navy); box-shadow: var(--shadow-sm); }
+  .admin-tab-content { display: none; }
+  .admin-tab-content.active { display: block; }
+  .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+  .list-item:last-child { border-bottom: none; }
+  .list-item .item-name { font-size: 15px; }
+  .list-item .item-sub { font-size: 12px; color: var(--gray-600); font-style: italic; margin-top: 2px; }
+  .delete-btn { background: none; border: 1px solid #fecaca; color: var(--danger); border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+  .add-item-form { display: flex; gap: 8px; margin-top: 14px; }
+  .add-item-form input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--gray-50); }
+  .add-item-form input:focus { outline: none; border-color: var(--navy); background: white; }
+  .add-btn { background: var(--navy); color: white; border: none; border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+  .pw-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; flex: 1; gap: 16px; }
+  .pw-screen .lock-icon { font-size: 48px; margin-bottom: 8px; }
+  .pw-screen h2 { font-size: 20px; color: var(--navy); font-weight: normal; }
+  .pw-screen p { font-size: 14px; color: var(--gray-600); font-style: italic; text-align: center; }
+  .pw-input-wrap { display: flex; gap: 8px; width: 100%; max-width: 300px; }
+  .pw-input-wrap input { flex: 1; padding: 12px 16px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 16px; font-family: inherit; text-align: center; letter-spacing: 4px; }
+  .pw-input-wrap input:focus { outline: none; border-color: var(--navy); }
+  .pw-submit { background: var(--navy); color: white; border: none; border-radius: var(--radius-sm); padding: 12px 20px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .reg-screen { position: fixed; inset: 0; background: rgba(26,74,122,0.92); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .reg-card { background: white; border-radius: var(--radius); padding: 28px 24px; width: 100%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .reg-card h2 { font-size: 18px; color: var(--navy); font-weight: normal; text-align: center; margin-bottom: 6px; }
+  .reg-card p { font-size: 13px; color: var(--gray-600); font-style: italic; text-align: center; margin-bottom: 20px; }
+  .reg-field { margin-bottom: 14px; }
+  .reg-field label { display: block; font-size: 12px; color: var(--gray-600); margin-bottom: 5px; }
+  .reg-field input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; }
+  .reg-field input:focus { outline: none; border-color: var(--navy); }
+  .reg-submit { width: 100%; background: var(--navy); color: white; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 15px; cursor: pointer; font-family: inherit; margin-top: 4px; }
+  .reg-edit-btn { background: none; border: none; color: var(--navy); font-size: 12px; text-decoration: underline; cursor: pointer; font-family: inherit; font-style: italic; }
+  .home-footer { padding: 12px 20px 24px; text-align: center; }
+  .therapist-info { display: flex; align-items: center; justify-content: center; gap: 8px; background: white; border-radius: 24px; padding: 10px 18px; box-shadow: var(--shadow-sm); font-size: 13px; color: var(--gray-600); }
+  .therapist-info .dot { width: 8px; height: 8px; background: var(--teal); border-radius: 50%; }
+  .missed-reason { display: flex; flex-direction: column; gap: 10px; }
+  .reason-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; transition: border-color 0.15s; }
+  .reason-option.selected { border-color: var(--navy); background: #f0f5fc; }
+  .reason-option input[type="radio"] { display: none; }
+  .reason-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--gray-400); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .reason-option.selected .reason-dot { border-color: var(--navy); background: var(--navy); }
+  .reason-option.selected .reason-dot::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; }
+  .reason-text { font-size: 14px; color: var(--gray-800); }
 </style>
 </head>
 <body>
-<iframe 
-  src="https://script.google.com/macros/s/AKfycbyDIjr82lskJp6PpVJWPqUkOS-z9gObl2HNG7fFc6j4VdvaaeAez0Ns7bmdc6aJub0-AQ/exec"
-  allowfullscreen
-  allow="fullscreen"
-></iframe>
+
+<!-- REGISTRATION OVERLAY -->
+<div class="reg-screen" id="regScreen" style="display:none;">
+  <div class="reg-card">
+    <div style="text-align:center;margin-bottom:16px;">
+      <svg width="44" height="44" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#1a4a7a"/><path d="M28 56 Q50 22 72 56" stroke="white" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="50" cy="67" r="12" fill="#2a9d8f"/><line x1="50" y1="55" x2="50" y2="79" stroke="white" stroke-width="4"/></svg>
+    </div>
+    <h2>Welcome to Gould Therapy</h2>
+    <p>Register your name and email to get started. You'll receive a copy of each note you submit.</p>
+    <div class="reg-field">
+      <label>Your full name</label>
+      <input type="text" id="regName" placeholder="e.g. Maria Lopez, PT" autocomplete="name">
+    </div>
+    <div class="reg-field">
+      <label>Your email address</label>
+      <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <button class="reg-submit" onclick="saveRegistration()">Get Started</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>Submitting…</p>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div class="app-header" style="padding-bottom:28px;">
+    <div class="logo-circle">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#1a4a7a"/><path d="M28 56 Q50 22 72 56" stroke="white" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="50" cy="67" r="12" fill="#2a9d8f"/><line x1="50" y1="55" x2="50" y2="79" stroke="white" stroke-width="4"/></svg>
+    </div>
+    <h1>Gould Therapy</h1>
+    <div class="subtitle">Home Health Visit Tracker</div>
+  </div>
+  <div class="home-buttons">
+    <button class="main-btn" onclick="goTo('screen-visit')">
+      <div class="btn-icon navy">📋</div>
+      <div class="btn-text"><h3>Visit Record</h3><p>Start a new patient visit record</p></div>
+    </button>
+    <button class="main-btn teal" onclick="goTo('screen-missed')">
+      <div class="btn-icon teal">📵</div>
+      <div class="btn-text"><h3>Missed Visit</h3><p>Patient not home — log the attempt</p></div>
+    </button>
+    <button class="main-btn gold" onclick="goToAdmin()">
+      <div class="btn-icon gold">⚙️</div>
+      <div class="btn-text"><h3>Admin</h3><p>Manage agencies &amp; therapists</p></div>
+    </button>
+  </div>
+  <div class="home-footer">
+    <div class="therapist-info">
+      <div class="dot"></div>
+      <span id="homeTherapistName">Not registered</span>
+      <button class="reg-edit-btn" onclick="editRegistration()">Change</button>
+    </div>
+  </div>
+</div>
+
+<!-- VISIT NOTE -->
+<div class="screen" id="screen-visit">
+  <div class="app-header">
+    <button class="back-btn" onclick="goHome()">← Back</button>
+    <h1>Visit Record</h1>
+    <div class="subtitle">Complete all fields &amp; get signatures</div>
+  </div>
+  <div class="form-body">
+    <div class="form-section">
+      <h3>Visit Information</h3>
+      <div class="row-2">
+        <div class="field"><label>Date</label><input type="text" id="v-date" readonly></div>
+        <div class="field"><label>Time (PST)</label><input type="text" id="v-time" readonly></div>
+      </div>
+      <div class="field"><label>Therapist</label><input type="text" id="v-therapist" readonly></div>
+      <div class="field"><label>Agency</label><select id="v-agency"><option value="">Select agency…</option></select></div>
+    </div>
+    <div class="form-section">
+      <h3>Patient</h3>
+      <div class="field"><label>Patient full name</label><input type="text" id="v-patient" placeholder="First Last" autocomplete="off"></div>
+    </div>
+    <div class="form-section">
+      <h3>Visit Type</h3>
+      <div class="chips" id="visitTypeChips">
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">PT Evaluation</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">PT Follow-up</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">OT Evaluation</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">OT Follow-up</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">SLP Evaluation</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">SLP Follow-up</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">Recertification</button>
+        <button class="chip" onclick="selectChip(this,'v-visit-type')">Discharge</button>
+      </div>
+      <input type="hidden" id="v-visit-type">
+    </div>
+    <div class="form-section">
+      <h3>Signatures</h3>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Therapist Signature</div>
+        <div class="sig-pad-wrapper">
+          <canvas id="sigTherapist" width="440" height="160"></canvas>
+          <div class="sig-placeholder" id="sigTherapistPlaceholder">Sign here</div>
+        </div>
+        <div class="sig-actions">
+          <button class="sig-clear-btn" onclick="clearSig('sigTherapist','sigTherapistPlaceholder')">Clear</button>
+          <span class="sig-label">Therapist Signature</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:6px;">Patient Signature</div>
+        <div class="sig-pad-wrapper">
+          <canvas id="sigPatient" width="440" height="160"></canvas>
+          <div class="sig-placeholder" id="sigPatientPlaceholder">Patient signs here</div>
+        </div>
+        <div class="sig-actions">
+          <button class="sig-clear-btn" onclick="clearSig('sigPatient','sigPatientPlaceholder')">Clear</button>
+          <span class="sig-label">Patient Signature</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="submit-area">
+    <button class="submit-btn" onclick="submitVisit()">Submit Visit Record</button>
+  </div>
+</div>
+
+<!-- MISSED VISIT -->
+<div class="screen" id="screen-missed">
+  <div class="app-header">
+    <button class="back-btn" onclick="goHome()">← Back</button>
+    <h1>Missed Visit</h1>
+    <div class="subtitle">Patient not available</div>
+  </div>
+  <div class="form-body">
+    <div class="form-section">
+      <h3>Visit Information</h3>
+      <div class="row-2">
+        <div class="field"><label>Date</label><input type="text" id="m-date" readonly></div>
+        <div class="field"><label>Time (PST)</label><input type="text" id="m-time" readonly></div>
+      </div>
+      <div class="field"><label>Therapist</label><input type="text" id="m-therapist" readonly></div>
+      <div class="field"><label>Agency</label><select id="m-agency"><option value="">Select agency…</option></select></div>
+    </div>
+    <div class="form-section">
+      <h3>Patient</h3>
+      <div class="field"><label>Patient full name</label><input type="text" id="m-patient" placeholder="First Last" autocomplete="off"></div>
+    </div>
+    <div class="form-section">
+      <h3>Reason for Missed Visit</h3>
+      <div class="missed-reason">
+        <label class="reason-option" onclick="selectReason(this,'Patient not home')"><input type="radio" name="missed-reason"><div class="reason-dot"></div><span class="reason-text">Patient not home</span></label>
+        <label class="reason-option" onclick="selectReason(this,'Patient refused visit')"><input type="radio" name="missed-reason"><div class="reason-dot"></div><span class="reason-text">Patient refused visit</span></label>
+        <label class="reason-option" onclick="selectReason(this,'Patient hospitalized')"><input type="radio" name="missed-reason"><div class="reason-dot"></div><span class="reason-text">Patient hospitalized</span></label>
+        <label class="reason-option" onclick="selectReason(this,'Patient unavailable – other')"><input type="radio" name="missed-reason"><div class="reason-dot"></div><span class="reason-text">Patient unavailable – other</span></label>
+      </div>
+      <input type="hidden" id="m-reason">
+    </div>
+    <div class="form-section">
+      <h3>Additional Notes</h3>
+      <div class="field"><textarea id="m-notes" rows="3" placeholder="Any additional notes…"></textarea></div>
+    </div>
+  </div>
+  <div class="submit-area">
+    <button class="submit-btn teal" onclick="submitMissed()">Submit Missed Visit</button>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="screen" id="screen-admin">
+  <div class="app-header">
+    <button class="back-btn" onclick="goHome()">← Back</button>
+    <h1>Admin Panel</h1>
+    <div class="subtitle">Manage your data</div>
+  </div>
+  <div class="pw-screen" id="adminPwGate">
+    <div class="lock-icon">🔒</div>
+    <h2>Admin Access</h2>
+    <p>Enter the admin password to manage agencies and therapists.</p>
+    <div class="pw-input-wrap">
+      <input type="password" id="adminPwInput" placeholder="••••••" onkeydown="if(event.key==='Enter')checkAdminPw()">
+      <button class="pw-submit" onclick="checkAdminPw()">Enter</button>
+    </div>
+  </div>
+  <div class="form-body" id="adminContent" style="display:none;">
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab(this,'tab-agencies')">Agencies</button>
+      <button class="admin-tab" onclick="switchAdminTab(this,'tab-therapists')">Therapists</button>
+    </div>
+    <div class="admin-tab-content active" id="tab-agencies">
+      <div class="form-section">
+        <h3>Agencies</h3>
+        <div id="agencyList"></div>
+        <div class="add-item-form">
+          <input type="text" id="newAgencyInput" placeholder="Agency name…" onkeydown="if(event.key==='Enter')addAgency()">
+          <button class="add-btn" onclick="addAgency()">Add</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-tab-content" id="tab-therapists">
+      <div class="form-section">
+        <h3>Registered Therapists</h3>
+        <p style="font-size:13px;color:var(--gray-600);font-style:italic;margin-bottom:12px;">Therapists self-register on first use. You can remove them here.</p>
+        <div id="therapistList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ADMIN_PASSWORD = 'gould2025';
+let therapistSig = null;
+let patientSig = null;
+let currentTherapist = null;
+let agencies = [];
+let therapists = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  checkRegistration();
+});
+
+function loadData() {
+  agencies = JSON.parse(localStorage.getItem('gt_agencies') || '[]');
+  therapists = JSON.parse(localStorage.getItem('gt_therapists') || '[]');
+  if (agencies.length === 0) {
+    agencies = ['Kindred','Amedisys','LHC Group','Encompass Health'];
+    saveAgencies();
+  }
+}
+function saveAgencies() { localStorage.setItem('gt_agencies', JSON.stringify(agencies)); }
+function saveTherapists() { localStorage.setItem('gt_therapists', JSON.stringify(therapists)); }
+
+function checkRegistration() {
+  currentTherapist = JSON.parse(localStorage.getItem('gt_user') || 'null');
+  if (!currentTherapist) {
+    document.getElementById('regScreen').style.display = 'flex';
+  } else {
+    document.getElementById('regScreen').style.display = 'none';
+    document.getElementById('homeTherapistName').textContent = currentTherapist.name;
+  }
+}
+
+function saveRegistration() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  if (!name || !email) { showToast('Please enter your name and email.','error'); return; }
+  if (!email.includes('@')) { showToast('Please enter a valid email.','error'); return; }
+  currentTherapist = { name, email };
+  localStorage.setItem('gt_user', JSON.stringify(currentTherapist));
+  if (!therapists.find(t => t.email === email)) {
+    therapists.push({ name, email });
+    saveTherapists();
+  }
+  document.getElementById('regScreen').style.display = 'none';
+  document.getElementById('homeTherapistName').textContent = name;
+  showToast('Welcome, ' + name + '!','success');
+}
+
+function editRegistration() {
+  document.getElementById('regName').value = currentTherapist ? currentTherapist.name : '';
+  document.getElementById('regEmail').value = currentTherapist ? currentTherapist.email : '';
+  document.getElementById('regScreen').style.display = 'flex';
+}
+
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0,0);
+  if (screenId === 'screen-visit') initVisitForm();
+  if (screenId === 'screen-missed') initMissedForm();
+}
+function goHome() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-home').classList.add('active');
+  window.scrollTo(0,0);
+}
+function goToAdmin() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-admin').classList.add('active');
+  // If already authenticated on this device, skip password
+  if (localStorage.getItem('gt_admin_auth') === 'true') {
+    document.getElementById('adminPwGate').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    renderAgencies(); renderTherapists();
+  } else {
+    document.getElementById('adminPwGate').style.display = 'flex';
+    document.getElementById('adminContent').style.display = 'none';
+    document.getElementById('adminPwInput').value = '';
+  }
+  window.scrollTo(0,0);
+}
+
+function getPSTDateTime() {
+  const now = new Date();
+  const pst = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const date = pst.toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
+  const time = pst.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+  return { date, time };
+}
+
+function populateAgencies(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '<option value="">Select agency…</option>';
+  agencies.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o); });
+}
+
+function initVisitForm() {
+  const { date, time } = getPSTDateTime();
+  document.getElementById('v-date').value = date;
+  document.getElementById('v-time').value = time;
+  document.getElementById('v-therapist').value = currentTherapist ? currentTherapist.name : '';
+  populateAgencies('v-agency');
+  document.querySelectorAll('#visitTypeChips .chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('v-visit-type').value = '';
+  ['v-patient'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  initSigPad('sigTherapist','sigTherapistPlaceholder', sig => { therapistSig = sig; });
+  initSigPad('sigPatient','sigPatientPlaceholder', sig => { patientSig = sig; });
+  clearSig('sigTherapist','sigTherapistPlaceholder');
+  clearSig('sigPatient','sigPatientPlaceholder');
+  therapistSig = null; patientSig = null;
+}
+
+function initMissedForm() {
+  const { date, time } = getPSTDateTime();
+  document.getElementById('m-date').value = date;
+  document.getElementById('m-time').value = time;
+  document.getElementById('m-therapist').value = currentTherapist ? currentTherapist.name : '';
+  populateAgencies('m-agency');
+  document.getElementById('m-patient').value = '';
+  document.getElementById('m-notes').value = '';
+  document.getElementById('m-reason').value = '';
+  document.querySelectorAll('.reason-option').forEach(r => r.classList.remove('selected'));
+}
+
+function initSigPad(canvasId, placeholderId, onChange) {
+  const canvas = document.getElementById(canvasId);
+  const placeholder = document.getElementById(placeholderId);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = (rect.width || 440) * dpr;
+  canvas.height = 160 * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  let drawing = false, hasContent = false;
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - r.left, y: cy - r.top };
+  }
+  function start(e) { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); if(!hasContent){hasContent=true;placeholder.style.display='none';} }
+  function move(e) { if(!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); if(onChange) onChange(canvas.toDataURL()); }
+  function end(e) { e.preventDefault(); drawing = false; if(hasContent && onChange) onChange(canvas.toDataURL()); }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end, {passive:false});
+}
+
+function clearSig(canvasId, placeholderId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  document.getElementById(placeholderId).style.display = 'block';
+  if (canvasId === 'sigTherapist') therapistSig = null;
+  if (canvasId === 'sigPatient') patientSig = null;
+}
+
+function selectChip(el, hiddenId) {
+  el.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById(hiddenId).value = el.textContent;
+}
+function selectReason(el, reason) {
+  document.querySelectorAll('.reason-option').forEach(r => r.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('m-reason').value = reason;
+}
+
+function submitVisit() {
+  const patient = document.getElementById('v-patient').value.trim();
+  const agency = document.getElementById('v-agency').value;
+  const visitType = document.getElementById('v-visit-type').value;
+  if (!patient) { showToast('Please enter the patient name.','error'); return; }
+  if (!agency) { showToast('Please select an agency.','error'); return; }
+  if (!visitType) { showToast('Please select a visit type.','error'); return; }
+  if (!therapistSig) { showToast('Please add your signature.','error'); return; }
+  if (!patientSig) { showToast('Please get the patient signature.','error'); return; }
+  const data = {
+    type:'visit', date:document.getElementById('v-date').value, time:document.getElementById('v-time').value,
+    therapistName:currentTherapist.name, therapistEmail:currentTherapist.email,
+    agency, patientName:patient, visitType,
+    therapistSignature:therapistSig, patientSignature:patientSig,
+  };
+  submitData(data);
+}
+
+function submitMissed() {
+  const patient = document.getElementById('m-patient').value.trim();
+  const agency = document.getElementById('m-agency').value;
+  const reason = document.getElementById('m-reason').value;
+  if (!patient) { showToast('Please enter the patient name.','error'); return; }
+  if (!agency) { showToast('Please select an agency.','error'); return; }
+  if (!reason) { showToast('Please select a reason.','error'); return; }
+  const data = {
+    type:'missed', date:document.getElementById('m-date').value, time:document.getElementById('m-time').value,
+    therapistName:currentTherapist.name, therapistEmail:currentTherapist.email,
+    agency, patientName:patient, reason, notes:document.getElementById('m-notes').value.trim(),
+  };
+  submitData(data);
+}
+
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDIjr82lskJp6PpVJWPqUkOS-z9gObl2HNG7fFc6j4VdvaaeAez0Ns7bmdc6aJub0-AQ/exec';
+
+async function submitData(data) {
+  document.getElementById('loadingOverlay').classList.add('show');
+
+  // Try up to 3 times
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(data),
+      });
+      // no-cors always resolves (even on success), so we assume success
+      document.getElementById('loadingOverlay').classList.remove('show');
+      showToast('✓ Submitted! Emails sent.', 'success');
+      setTimeout(() => goHome(), 2000);
+      return;
+    } catch(err) {
+      if (attempts >= maxAttempts) {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Connection error. Check your internet.', 'error');
+      } else {
+        await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+      }
+    }
+  }
+}
+
+
+// Admin
+function checkAdminPw() {
+  if (document.getElementById('adminPwInput').value === ADMIN_PASSWORD) {
+    localStorage.setItem('gt_admin_auth', 'true');
+    document.getElementById('adminPwGate').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    renderAgencies(); renderTherapists();
+  } else { showToast('Incorrect password.','error'); document.getElementById('adminPwInput').value=''; }
+}
+function switchAdminTab(btn, tabId) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+function renderAgencies() {
+  const list = document.getElementById('agencyList');
+  list.innerHTML = '';
+  if (!agencies.length) { list.innerHTML = '<p style="font-size:13px;color:var(--gray-400);font-style:italic;">No agencies yet.</p>'; return; }
+  agencies.forEach((a,i) => {
+    const item = document.createElement('div'); item.className='list-item';
+    item.innerHTML = `<span class="item-name">${a}</span><button class="delete-btn" onclick="deleteAgency(${i})">Remove</button>`;
+    list.appendChild(item);
+  });
+}
+function addAgency() {
+  const input = document.getElementById('newAgencyInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (agencies.includes(name)) { showToast('Already exists.','error'); return; }
+  agencies.push(name); saveAgencies(); renderAgencies(); input.value='';
+  showToast('Agency added.','success');
+}
+function deleteAgency(i) {
+  if (!confirm('Remove this agency?')) return;
+  agencies.splice(i,1); saveAgencies(); renderAgencies();
+}
+function renderTherapists() {
+  const list = document.getElementById('therapistList');
+  list.innerHTML = '';
+  if (!therapists.length) { list.innerHTML = '<p style="font-size:13px;color:var(--gray-400);font-style:italic;">No therapists registered yet.</p>'; return; }
+  therapists.forEach((t,i) => {
+    const item = document.createElement('div'); item.className='list-item';
+    item.innerHTML = `<div><div class="item-name">${t.name}</div><div class="item-sub">${t.email}</div></div><button class="delete-btn" onclick="deleteTherapist(${i})">Remove</button>`;
+    list.appendChild(item);
+  });
+}
+function deleteTherapist(i) {
+  if (!confirm('Remove this therapist?')) return;
+  therapists.splice(i,1); saveTherapists(); renderTherapists();
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' '+type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
 </body>
 </html>
